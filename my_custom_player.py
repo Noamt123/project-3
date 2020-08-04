@@ -1,6 +1,6 @@
 
 from sample_players import DataPlayer
-
+from isolation import DebugState
 
 class CustomPlayer(DataPlayer):
     """ Implement your own agent to play knight's Isolation
@@ -43,20 +43,46 @@ class CustomPlayer(DataPlayer):
         #          call self.queue.put(ACTION) at least once before time expires
         #          (the timer is automatically managed for you)
         import random
-        import time
-        #I am using the alpha beta algorithm to calculate the best move
+        if state.ply_count < 4:
+            A = random.choice(state.actions())
+            self.queue.put(A) #used as opening book for run match.py but not part of project
+            #self.queue.put(A) #used for unittest
+
+        else:
+            if self.context == None:
+                print(state.locs[0],", 1 | 2 ,", state.locs[1])
+                self.context = 0
+            Action = None
+            depth_l = 7
+            """for depth in range(1, depth_l+1):
+                Action = self.alpha_beta_algorithm(state, depth, self.player_id)"""
+            """print('In get_action(), state received:')
+            debug_board = DebugState.from_state(state)
+            print(debug_board)"""
+            sc = float("-inf")
+            for depth in range(1, depth_l+1):
+                for a in state.actions():
+                    ba = self.principle_v(state.result(a), depth, float("-inf"), float("inf"), 1, self.player_id)
+                    if sc <= ba:
+                        sc = ba
+                        Action = a
+            self.queue.put(Action)
+        return 0
+
+
+
+    def alpha_beta_algorithm(self, state, depth, player):
         alpha = float("-inf")
         beta = float("inf")
         best =  float("-inf")
         besta = None
-        depth = 3
         v = 1
-        print(state.actions(),"acts")
+        #print(state.actions(),"acts")
         for a in state.actions():
-            print("HRO")
-            v  = self.min_v(state.result(a), depth, alpha, beta)
+            #print("HRO")
+            v  = self.min_v(state.result(a), depth, alpha, beta, player)
             alpha = max(alpha, v)
-            print(v,"v")
+            """print(v,"v")
             print(a,"a")
             print("____________________")
             print("____________________")
@@ -69,49 +95,89 @@ class CustomPlayer(DataPlayer):
             print("____________________")
             print("____________________")
             print("____________________")
-            print("____________________")
-            if v > best:
+            print("____________________")"""
+            if v >= best:
                 best = v
                 besta = a
-        print(besta,"besta")
-        self.queue.put(besta)
-        print("OOOT")
+        #print(besta,"besta")
+        return besta
 
-    def min_v(self, state, depth, alpha, beta):
-        if state.terminal_test():
-            print(state.utility(0),"ia")
-            return state.utility(0)
-        if depth == 0:
-            print(len(state.liberties(state.locs[0])),"di")
-            return len(state.liberties(state.locs[0]))
+    def min_v(self, state, depth, alpha, beta, player):
+        if state.terminal_test():           
+            #print(state.utility(player),"ia"):
+            return state.utility(player)
+        elif depth == 0:
+            #print(len(state.liberties(state.locs[player])),"di")
+            i = 0
+            if player == 0:
+                i = 1
+            #nex =0
+            #p1 = state.liberties(state.locs[player])
+            #p2 = state.liberties(state.locs[i])
+            """for a in p1:
+                nex += len(state.liberties(a))
+            for b in p2:
+                nex -= len(state.liberties(b))"""
+            return len(state.liberties(state.locs[player]))**2 - len(state.liberties(state.locs[i]))**1.5
         v = float("inf")
         for a in state.actions():
-            v = min(v, self.max_v(state.result(a), depth-1, alpha, beta))
+            v = min(v, self.max_v(state.result(a), depth-1, alpha, beta, player))
             if v <= alpha:
-                print(v,"MOOOM")
+                #print(v,"MOOOM")
                 return v
             beta = min(beta, v)
-        print(v,"ji")
+        #print(v,"ji")
         return v
 
-    def max_v(self, state, depth, alpha, beta):
+    def max_v(self, state, depth, alpha, beta, player):
         if state.terminal_test():
-            print(state.utility(0), "aa")
-            return state.utility(0)
-        if depth == 0:
-            print(len(state.liberties(state.locs[0])),"da")
-            return len(state.liberties(state.locs[0]))
+            #print(state.utility(player), "aa")
+            return state.utility(player)
+        elif depth == 0:
+            #print(len(state.liberties(state.locs[player])),"da")
+            i = 0
+            if player == 0:
+                i = 1
+            #p1 = state.liberties(state.locs[player])
+            #p2 = state.liberties(state.locs[i])
+            #nex = 0
+            """for a in p1:
+                nex += len(state.liberties(a))
+            for b in p2:
+                nex -= len(state.liberties(b))"""
+            return (len(state.liberties(state.locs[player]))) - (len(state.liberties(state.locs[i])))
         v = float("-inf")
         for a in state.actions():
-            v = max(v, self.min_v(state.result(a), depth-1, alpha,  beta))
+            v = max(v, self.min_v(state.result(a), depth-1, alpha,  beta, player))
             if v >= beta:
-                print(v,"WOOOOW")
+                #print(v,"WOOOOW")
                 return v
             alpha = max(alpha, v)
-        print(v,"ja")
+        #print(v,"ja")
         return v
 
-
+    def principle_v(self, state, depth, alpha, beta, mult, player):
+        if state.terminal_test():
+            return state.utility(player)
+        elif depth == 0:
+            i = 0
+            if player == 0:
+                i = 1
+            return mult * len(state.liberties(state.locs[player])) - len(state.liberties(state.locs[i]))
+        x = 0
+        score = 0
+        for a in state.actions():
+            if x == 1:
+                score = -self.principle_v(state.result(a), depth-1, -alpha-1, -alpha,-mult, player)
+                if alpha < score and score < beta:
+                    score = -self.principle_v(state.result(a), depth-1, -beta, -score, -mult, player)
+            else:
+                score = -self.principle_v(state.result(a), depth-1, -beta, -alpha, -mult, player)
+                x += 1
+            alpha = max(a, score)
+            if alpha >= beta:
+                break
+        return alpha
 
 
 

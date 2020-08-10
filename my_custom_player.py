@@ -43,30 +43,39 @@ class CustomPlayer(DataPlayer):
         #          call self.queue.put(ACTION) at least once before time expires
         #          (the timer is automatically managed for you)
         import random
-        if state.ply_count < 4:
-            A = random.choice(state.actions())
-            self.queue.put(A) #used as opening book for run match.py but not part of project
-            #self.queue.put(A) #used for unittest
-
+        if state.ply_count < 30:
+            if state.ply_count < 2:
+                self.queue.put(74) #used as opening book for run match.py but not part of project
+                #A = random.choice(state.actions())
+                #self.queue.put(A)
+            else:
+                Action = None
+                depth_l = 3
+                for depth in range(1, depth_l+1):
+                    Action = self.alpha_beta_algorithm(state, depth, self.player_id)
+                self.queue.put(Action)
         else:
-            if self.context == None:
-                print(state.locs[0],", 1 | 2 ,", state.locs[1])
-                self.context = 0
             Action = None
-            depth_l = 7
-            """for depth in range(1, depth_l+1):
-                Action = self.alpha_beta_algorithm(state, depth, self.player_id)"""
-            """print('In get_action(), state received:')
-            debug_board = DebugState.from_state(state)
-            print(debug_board)"""
-            sc = float("-inf")
+            depth_l = 4
+            for depth in range(1, depth_l+1):
+                Action = self.alpha_beta_algorithm(state, depth, self.player_id)
+            self.queue.put(Action)
+        """else:
+            Action = None
+            depth_l = 6
+            for depth in range(1, depth_l+1):
+                Action = self.alpha_beta_algorithm(state, depth, self.player_id)
+            self.queue.put(Action)"""
+        """print('In get_action(), state received:')
+        debug_board = DebugState.from_state(state)
+        print(debug_board)"""
+        """sc = float("-inf")
             for depth in range(1, depth_l+1):
                 for a in state.actions():
                     ba = self.principle_v(state.result(a), depth, float("-inf"), float("inf"), 1, self.player_id)
                     if sc <= ba:
                         sc = ba
-                        Action = a
-            self.queue.put(Action)
+                        Action = a"""
         return 0
 
 
@@ -111,14 +120,16 @@ class CustomPlayer(DataPlayer):
             i = 0
             if player == 0:
                 i = 1
-            #nex =0
-            #p1 = state.liberties(state.locs[player])
-            #p2 = state.liberties(state.locs[i])
-            """for a in p1:
-                nex += len(state.liberties(a))
-            for b in p2:
-                nex -= len(state.liberties(b))"""
-            return len(state.liberties(state.locs[player]))**2 - len(state.liberties(state.locs[i]))**1.5
+            p1 = state.liberties(state.locs[player])
+            p2 = state.liberties(state.locs[i])
+            nex1 = sum(len(state.liberties(A)) for A in p1)
+            nex2 = sum(len(state.liberties(B)) for B in p2)
+            if nex1 == 0:
+                return float("-inf")
+            elif nex2 == 0:
+                return float("inf")
+            return nex1**2 - nex2
+            #return len(p1)**2 - len(p2)
         v = float("inf")
         for a in state.actions():
             v = min(v, self.max_v(state.result(a), depth-1, alpha, beta, player))
@@ -138,14 +149,21 @@ class CustomPlayer(DataPlayer):
             i = 0
             if player == 0:
                 i = 1
-            #p1 = state.liberties(state.locs[player])
-            #p2 = state.liberties(state.locs[i])
-            #nex = 0
-            """for a in p1:
-                nex += len(state.liberties(a))
-            for b in p2:
-                nex -= len(state.liberties(b))"""
-            return (len(state.liberties(state.locs[player]))) - (len(state.liberties(state.locs[i])))
+            p1 = state.liberties(state.locs[player])
+            p2 = state.liberties(state.locs[i])
+            print(state.locs)
+            print(self.walldist(state.locs[0]),"wallsdist")
+            print('In get_action(), state received:')
+            debug_board = DebugState.from_state(state)
+            print(debug_board)
+            nex1 = sum(len(state.liberties(A)) for A in p1)
+            nex2 = sum(len(state.liberties(B)) for B in p2)
+            if nex1 == 0:
+                return float("-inf")
+            elif nex2 == 0:
+                return float("inf")
+            return nex1**2 - nex2
+            #return len(p1)**2 - len(p2)
         v = float("-inf")
         for a in state.actions():
             v = max(v, self.min_v(state.result(a), depth-1, alpha,  beta, player))
@@ -156,7 +174,7 @@ class CustomPlayer(DataPlayer):
         #print(v,"ja")
         return v
 
-    def principle_v(self, state, depth, alpha, beta, mult, player):
+    """def principle_v(self, state, depth, alpha, beta, mult, player):
         if state.terminal_test():
             return state.utility(player)
         elif depth == 0:
@@ -177,7 +195,18 @@ class CustomPlayer(DataPlayer):
             alpha = max(a, score)
             if alpha >= beta:
                 break
-        return alpha
+        return alpha"""
+    def walldist(self, loca): 
+        b = [10, 23, 36, 49, 62, 75, 88, 101]
+        locx = loca%13
+        for a in range(4):
+            if(loca <= b[a]):
+                return a+min(locx,10-locx)
+        for c in range(4, 8):
+            if(loca <= b[c]):
+                return 8-c+min(locx,10-locx)
+        return min(locx,10-locx)
+
 
 
 
